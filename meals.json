@@ -8,7 +8,8 @@
    "lunch": true,
    "breakfast": true,
    "memo": {
-    "breakfast": "계란"
+    "breakfast": "계란",
+    "lunch": "불고기"
    }
   }
  }
