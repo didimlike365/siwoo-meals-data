@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-title" content="시우 밥기록">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#DDF0FA">
+<title>시우 밥기록</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍚</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+  /* ===== 1. 디자인 토큰 ===== */
+  :root {
+    --sky: #DDF0FA;      /* 배경 하늘색 */
+    --paper: #FFFFFF;    /* 판 */
+    --cell: #F2F9FD;     /* 날짜 칸 */
+    --ink: #23324D;      /* 글자 남색 */
+    --soft: #8FA3BF;     /* 흐린 글자 */
+    --line: #C3DFEF;     /* 판 아래 그림자선 */
+    --star: #FFC531;     /* 별 노랑 */
+    --crown: #FFF1C2;    /* 왕관 칸 배경 */
+    --tomato: #FF6B57;   /* 오늘, 일요일 */
+    --display: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    --body: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--sky);
+    color: var(--ink);
+    font-family: var(--body);
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font: inherit; color: inherit; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--tomato); outline-offset: 2px; }
+
+  /* ===== 2. 레이아웃 ===== */
+  .app { max-width: 720px; margin: 0 auto; padding: 16px 12px 28px; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 8vw, 42px); margin: 0; }
+  .tools { display: flex; gap: 8px; }
+  .icon-btn {
+    border: none; background: var(--paper); width: 48px; height: 48px; border-radius: 50%;
+    font-size: 22px; cursor: pointer; box-shadow: 0 4px 0 var(--line);
+  }
+  .icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+
+  .month-bar { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .month-bar h2 { font-family: var(--display); font-weight: 400; font-size: 28px; margin: 0; min-width: 150px; text-align: center; }
+  .month-bar button { border: none; background: none; font-size: 26px; width: 48px; height: 48px; cursor: pointer; color: var(--ink); }
+
+  /* ===== 3. 스티커판 ===== */
+  .board { background: var(--paper); border-radius: 28px; padding: 12px 8px 14px; box-shadow: 0 6px 0 var(--line); }
+  .weekdays, .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .weekdays div { text-align: center; font-family: var(--display); font-size: 17px; color: var(--soft); padding: 2px 0 8px; }
+  .weekdays div:first-child { color: var(--tomato); }
+  .day {
+    aspect-ratio: 1 / 1.2; border: none; border-radius: 14px; background: var(--cell);
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 5px 1px 7px; position: relative;
+  }
+  .day.empty { background: none; }
+  .day.recordable { cursor: pointer; }
+  .day.future { opacity: .4; }
+  .day.today { outline: 3px solid var(--tomato); outline-offset: -3px; }
+  .day.crown { background: var(--crown); }
+  .num { font-family: var(--display); font-size: clamp(14px, 3.8vw, 21px); line-height: 1; }
+  .day.sun .num { color: var(--tomato); }
+  .slots { display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: clamp(10px, 2.9vw, 16px); line-height: 1.05; }
+  .slot.off { filter: grayscale(1); opacity: .16; }
+  .crown-mark { font-size: clamp(22px, 7vw, 38px); line-height: 1; margin-bottom: auto; margin-top: auto; }
+  .pop { animation: pop .5s cubic-bezier(.3, 1.7, .5, 1); }
+  @keyframes pop { from { transform: scale(.2) rotate(-20deg); } to { transform: scale(1) rotate(0); } }
+
+  /* ===== 4. 보상 게이지 ===== */
+  .goal { background: var(--paper); border-radius: 24px; padding: 14px 16px 16px; box-shadow: 0 6px 0 var(--line); }
+  .goal-text { font-family: var(--display); font-size: 22px; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .track { height: 24px; background: var(--cell); border-radius: 12px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--star); border-radius: 12px; transition: width .6s ease; }
+  .status { text-align: center; color: var(--soft); font-size: 14px; margin: 0; min-height: 1.2em; }
+
+  /* ===== 5. 아래에서 올라오는 패널 (기록, 설정) ===== */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(35, 50, 77, .35); z-index: 10;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .sheet {
+    background: var(--paper); width: 100%; max-width: 560px; border-radius: 28px 28px 0 0;
+    padding: 20px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+    max-height: 90vh; overflow-y: auto; animation: rise .25s ease-out;
+  }
+  @keyframes rise { from { transform: translateY(40px); opacity: 0; } }
+  .sheet h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0 0 14px; text-align: center; }
+  .meal-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .meal {
+    border: 3px solid var(--line); background: var(--cell); border-radius: 20px; padding: 14px 4px;
+    font-family: var(--display); font-size: 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .meal .big { font-size: 40px; }
+  .meal .mark { font-size: 15px; color: var(--soft); }
+  .meal.on { border-color: var(--star); background: #FFF6D6; }
+  .meal.on .mark { color: var(--ink); }
+  .close-btn {
+    display: block; width: 100%; margin-top: 16px; padding: 14px; border: none; border-radius: 16px;
+    background: var(--ink); color: #fff; font-family: var(--display); font-size: 20px; cursor: pointer;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 15px; }
+  .field input[type=text], .field input[type=password], .field input[type=number] {
+    padding: 12px; border: 2px solid var(--line); border-radius: 12px; font: inherit; font-size: 16px;
+  }
+  .check { flex-direction: row; align-items: center; gap: 10px; }
+  .check input { width: 22px; height: 22px; }
+  .hint { font-size: 13px; color: var(--soft); margin: -4px 0 12px; }
+  .sub { font-family: var(--display); font-size: 18px; margin: 18px 0 8px; }
+  .test-btn {
+    width: 100%; padding: 12px; border: 2px solid var(--ink); border-radius: 14px; background: var(--paper);
+    font-family: var(--display); font-size: 18px; cursor: pointer;
+  }
+  .conn { margin: 10px 0 4px; padding: 10px 12px; border-radius: 12px; font-size: 15px; background: var(--cell); }
+  .conn:empty { display: none; }
+  .conn.ok { background: #E3F6EC; }
+  .conn.bad { background: #FFE8E4; }
+
+  /* ===== 6. 알림, 축하 ===== */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 24px; z-index: 30;
+    font-size: 15px; max-width: 90vw; text-align: center;
+  }
+  .confetti { position: fixed; top: -48px; font-size: 30px; pointer-events: none; z-index: 25; animation: fall 3s ease-in forwards; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(540deg); } }
+  @media (prefers-reduced-motion: reduce) { .pop, .sheet, .confetti { animation: none; } .fill { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>시우 밥기록 🍚</h1>
+    <div class="tools">
+      <button id="editBtn" class="icon-btn" aria-label="오늘 기록하기" hidden>✏️</button>
+      <button id="setBtn" class="icon-btn" aria-label="설정">⚙️</button>
+    </div>
+  </header>
+
+  <nav class="month-bar">
+    <button id="prevBtn" aria-label="이전 달">◀</button>
+    <h2 id="monthTitle"></h2>
+    <button id="nextBtn" aria-label="다음 달">▶</button>
+  </nav>
+
+  <section class="board" aria-label="이번 달 밥 스티커판">
+    <div class="weekdays"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="goal" aria-label="이번 달 목표">
+    <div class="goal-text"><span id="goalText"></span><span id="prizeText"></span></div>
+    <div class="track"><div class="fill" id="fill"></div></div>
+  </section>
+
+  <p class="status" id="status"></p>
+</div>
+
+<!-- 기록 패널 -->
+<div class="backdrop" id="recordPanel" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="recordTitle">
+    <h3 id="recordTitle"></h3>
+    <div class="meal-btns" id="mealBtns"></div>
+    <button class="close-btn" data-close>다 했어요</button>
+  </div>
+</div>
+
+<!-- 설정 패널 -->
+<div class="backdrop" id="settingsPanel" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="settingsTitle">
+    <h3 id="settingsTitle">설정</h3>
+    <div class="sub">데이터 저장소 연결</div>
+    <label class="field">GitHub 아이디<input type="text" id="cfgOwner" autocomplete="off" autocapitalize="off"></label>
+    <label class="field">데이터 저장소 이름<input type="text" id="cfgRepo" autocomplete="off" autocapitalize="off" placeholder="siwoo-meals-data"></label>
+    <label class="field">토큰<input type="password" id="cfgToken" autocomplete="off"></label>
+    <p class="hint">토큰은 이 기기에만 저장돼요.</p>
+    <button class="test-btn" id="testBtn" type="button">연결 확인</button>
+    <p class="conn" id="connResult" role="status"></p>
+    <label class="field check"><input type="checkbox" id="cfgRecorder">이 기기에서 기록하기 (부모 폰)</label>
+
+    <div id="goalFields">
+      <div class="sub">이번 달 목표</div>
+      <label class="field">목표 별 개수<input type="number" id="cfgGoal" min="1" max="93" inputmode="numeric"></label>
+      <label class="field">선물<input type="text" id="cfgPrize" maxlength="20"></label>
+    </div>
+    <button class="close-btn" id="saveSettings">저장하기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+/* ===== 1. 기본값과 상태 ===== */
+const MEALS = [
+  { key: 'breakfast', label: '아침', icon: '🌅' },
+  { key: 'lunch',     label: '점심', icon: '☀️' },
+  { key: 'dinner',    label: '저녁', icon: '🌙' },
+];
+const FILE = 'meals.json';
+const CFG_KEY = 'siwoo-meal-config';
+const CACHE_KEY = 'siwoo-meal-cache';
+const EMPTY = () => ({ settings: { goal: 60, prize: '선물' }, records: {} });
+
+let cfg = loadLocal(CFG_KEY, { owner: '', repo: '', token: '', recorder: false });
+let data = normalize(loadLocal(CACHE_KEY, EMPTY()));
+let sha = null;          // GitHub 파일 버전 (저장할 때 필요)
+let dirty = {};          // 아직 GitHub에 저장 안 된 변경분
+let saveChain = Promise.resolve();
+let selectedDate = null;
+const view = new Date(); view.setDate(1);
+
+const $ = s => document.querySelector(s);
+
+/* ===== 2. 작은 도우미 ===== */
+function loadLocal(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
+function saveLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function normalize(d) {
+  d = d && typeof d === 'object' ? d : EMPTY();
+  d.settings = Object.assign({ goal: 60, prize: '선물' }, d.settings || {});
+  d.records = d.records || {};
+  return d;
+}
+function setRec(d, date, key, val) {
+  const rec = d.records[date] || (d.records[date] = {});
+  rec[key] = val;
+  if (!MEALS.some(m => rec[m.key])) delete d.records[date];   // 빈 날은 파일에서 뺌
+}
+// GitHub는 파일 내용을 base64로 주고받음. 한글이 깨지지 않게 UTF-8로 변환
+function toB64(str) { let bin = ''; new TextEncoder().encode(str).forEach(b => bin += String.fromCharCode(b)); return btoa(bin); }
+function fromB64(b64) { const bin = atob(b64.replace(/\n/g, '')); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
+
+/* ===== 3. GitHub 파일 DB ===== */
+const connected = (c = cfg) => c.owner && c.repo && c.token;
+const repoUrl = (c = cfg) => `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}`;
+const headers = (c = cfg) => ({ Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' });
+const timeNow = () => new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+
+function errorText(status) {
+  if (status === 401) return '토큰이 맞지 않아요. 설정에서 다시 입력하세요.';
+  if (status === 403) return '이 토큰에는 저장 권한이 없어요.';
+  if (status === 404) return '저장소를 찾을 수 없어요. 아이디, 저장소 이름, 토큰의 저장소 권한을 확인하세요.';
+  return `GitHub 연결에 실패했어요 (${status}).`;
+}
+// fetch 자체가 실패하면 네트워크 문제 (브라우저마다 오류 형태가 달라 이름과 메시지로 함께 판별)
+const errMsg = e => (e && (e.name === 'TypeError' || /fetch|network|load failed/i.test(e.message)))
+  ? '서버에 접속할 수 없어요. 인터넷 연결을 확인하고, GitHub Pages 주소에서 열었는지 확인하세요.'
+  : e.message;
+
+async function fetchRemote(c = cfg) {
+  const res = await fetch(`${repoUrl(c)}/contents/${FILE}?t=${Date.now()}`, { headers: headers(c), cache: 'no-store' });
+  if (res.status === 404) {
+    // 파일이 아직 없는 건지, 저장소 자체를 못 찾는 건지 구분
+    const repo = await fetch(repoUrl(c), { headers: headers(c) });
+    if (!repo.ok) throw new Error(errorText(repo.status));
+    return { data: EMPTY(), sha: null };   // 첫 기록 때 파일을 새로 만듦
+  }
+  if (!res.ok) throw new Error(errorText(res.status));
+  const j = await res.json();
+  return { data: normalize(JSON.parse(fromB64(j.content))), sha: j.sha };
+}
+
+// 저장 안 된 변경분을 최신 데이터 위에 다시 덮어씀
+function applyDirty(d) {
+  for (const k in dirty) {
+    const p = k.split('|');
+    if (p[0] === 'r') setRec(d, p[1], p[2], dirty[k]);
+    else d.settings[p[1]] = dirty[k];
+  }
+  return d;
+}
+
+async function load() {
+  if (!connected()) { setStatus('⚙️ 설정에서 저장소를 연결하면 기록이 보여요.'); render(); return false; }
+  setStatus('불러오는 중…');
+  let ok = false;
+  try {
+    const r = await fetchRemote();
+    data = applyDirty(r.data); sha = r.sha;
+    saveLocal(CACHE_KEY, data);
+    setStatus(`✅ 연결됨, ${timeNow()} 불러옴`);
+    ok = true;
+  } catch (e) { setStatus('❌ ' + errMsg(e)); }
+  render();
+  return ok;
+}
+
+// 저장은 한 번에 하나씩 순서대로
+function queueSave() { saveChain = saveChain.then(push).catch(() => {}); }
+
+async function push() {
+  if (!Object.keys(dirty).length) return;
+  const snapshot = { ...dirty };
+  setStatus('저장 중…');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) { const r = await fetchRemote(); data = applyDirty(r.data); sha = r.sha; }
+      const body = { message: '밥기록 업데이트', content: toB64(JSON.stringify(data, null, 1)) };
+      if (sha) body.sha = sha;
+      const res = await fetch(`${repoUrl()}/contents/${FILE}`, {
+        method: 'PUT', headers: { ...headers(), 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (res.status === 409 || res.status === 422) continue;   // 다른 기기가 먼저 저장함 → 다시 받아서 재시도
+      if (!res.ok) throw new Error(errorText(res.status));
+      sha = (await res.json()).content.sha;
+      for (const k in snapshot) if (dirty[k] === snapshot[k]) delete dirty[k];
+      saveLocal(CACHE_KEY, data);
+      setStatus(`✅ 저장됨 ${timeNow()}`);
+      render();
+      return;
+    } catch (e) { setStatus('❌ 저장 안 됨: ' + errMsg(e)); toast(errMsg(e)); return; }
+  }
+  setStatus('❌ 저장 안 됨: 다른 기기와 동시에 저장했어요. 다시 눌러 주세요.');
+}
+
+/* ===== 4. 화면 그리기 ===== */
+function monthStars() {
+  const prefix = ymd(view).slice(0, 8);   // "2026-09-"
+  let n = 0;
+  for (const date in data.records) if (date.startsWith(prefix)) MEALS.forEach(m => { if (data.records[date][m.key]) n++; });
+  return n;
+}
+
+function render(popDate) {
+  const y = view.getFullYear(), m = view.getMonth();
+  $('#monthTitle').textContent = `${y}년 ${m + 1}월`;
+  const grid = $('#grid');
+  grid.innerHTML = '';
+  const firstDay = new Date(y, m, 1).getDay();
+  const lastDate = new Date(y, m + 1, 0).getDate();
+  const today = ymd(new Date());
+
+  for (let i = 0; i < firstDay; i++) grid.appendChild(Object.assign(document.createElement('div'), { className: 'day empty' }));
+
+  for (let d = 1; d <= lastDate; d++) {
+    const date = ymd(new Date(y, m, d));
+    const rec = data.records[date] || {};
+    const all = MEALS.every(x => rec[x.key]);
+    const canRecord = cfg.recorder && date <= today;
+    const cell = document.createElement(canRecord ? 'button' : 'div');
+    cell.className = 'day'
+      + (all ? ' crown' : '')
+      + (date === today ? ' today' : '')
+      + (date > today ? ' future' : '')
+      + ((firstDay + d - 1) % 7 === 0 ? ' sun' : '')
+      + (canRecord ? ' recordable' : '');
+    const eaten = MEALS.filter(x => rec[x.key]).map(x => x.label);
+    cell.setAttribute('aria-label', `${m + 1}월 ${d}일, ${eaten.length ? eaten.join(', ') + ' 잘 먹음' : '기록 없음'}`);
+    cell.innerHTML = `<span class="num">${d}</span>` + (all
+      ? '<span class="crown-mark">👑</span>'
+      : `<span class="slots">${MEALS.map(x => `<span class="slot ${rec[x.key] ? '' : 'off'}">⭐</span>`).join('')}</span>`);
+    if (date === popDate) cell.lastElementChild.classList.add('pop');
+    if (canRecord) cell.onclick = () => openRecord(date);
+    grid.appendChild(cell);
+  }
+
+  const stars = monthStars();
+  const goal = Math.max(1, Number(data.settings.goal) || 60);
+  $('#goalText').textContent = `⭐ ${stars} / ${goal}`;
+  $('#prizeText').textContent = `🎁 ${data.settings.prize || '선물'}`;
+  $('#fill').style.width = Math.min(100, stars / goal * 100) + '%';
+  $('#editBtn').hidden = !cfg.recorder;
+  if (selectedDate) renderRecord();
+}
+
+function setStatus(t) { $('#status').textContent = t; }
+let toastTimer;
+function toast(t) {
+  const el = $('#toast'); el.textContent = t; el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2500);
+}
+
+/* ===== 5. 기록 패널 ===== */
+function openRecord(date) { selectedDate = date; renderRecord(); $('#recordPanel').hidden = false; }
+function renderRecord() {
+  const [, mm, dd] = selectedDate.split('-').map(Number);
+  $('#recordTitle').textContent = `${mm}월 ${dd}일 잘 먹었나요?`;
+  const rec = data.records[selectedDate] || {};
+  $('#mealBtns').innerHTML = MEALS.map(x => `
+    <button class="meal ${rec[x.key] ? 'on' : ''}" data-key="${x.key}" aria-pressed="${!!rec[x.key]}">
+      <span class="big">${x.icon}</span>${x.label}
+      <span class="mark">${rec[x.key] ? '⭐ 잘 먹음' : '눌러서 별 주기'}</span>
+    </button>`).join('');
+}
+
+$('#mealBtns').addEventListener('click', e => {
+  const btn = e.target.closest('.meal'); if (!btn) return;
+  const key = btn.dataset.key;
+  const val = !(data.records[selectedDate] || {})[key];
+  const goal = Number(data.settings.goal) || 60;
+  const before = monthStars();
+  setRec(data, selectedDate, key, val);
+  dirty[`r|${selectedDate}|${key}`] = val;
+  saveLocal(CACHE_KEY, data);
+  render(val ? selectedDate : null);
+  if (before < goal && monthStars() >= goal) celebrate();
+  if (connected()) queueSave(); else setStatus('저장 안 됨: 설정에서 저장소를 먼저 연결하세요.');
+});
+
+/* ===== 6. 설정 패널 ===== */
+function openSettings() {
+  $('#cfgOwner').value = cfg.owner; $('#cfgRepo').value = cfg.repo; $('#cfgToken').value = cfg.token;
+  $('#cfgRecorder').checked = cfg.recorder;
+  $('#cfgGoal').value = data.settings.goal; $('#cfgPrize').value = data.settings.prize;
+  $('#goalFields').hidden = !cfg.recorder;
+  $('#connResult').textContent = ''; $('#connResult').className = 'conn';
+  $('#settingsPanel').hidden = false;
+}
+const readForm = () => ({
+  owner: $('#cfgOwner').value.trim(), repo: $('#cfgRepo').value.trim(),
+  token: $('#cfgToken').value.trim(), recorder: $('#cfgRecorder').checked,
+});
+$('#cfgRecorder').addEventListener('change', e => $('#goalFields').hidden = !e.target.checked);
+
+// 저장하기 전에, 입력한 값으로 바로 읽기 테스트
+$('#testBtn').addEventListener('click', async () => {
+  const c = readForm(), out = $('#connResult');
+  if (!connected(c)) { out.textContent = '아이디, 저장소 이름, 토큰을 모두 입력하세요.'; out.className = 'conn bad'; return; }
+  out.textContent = '확인 중…'; out.className = 'conn';
+  try {
+    const r = await fetchRemote(c);
+    const days = Object.keys(r.data.records).length;
+    out.textContent = r.sha ? `✅ 연결됐어요. 기록 ${days}일을 불러왔어요.` : '✅ 연결됐어요. 기록 파일은 첫 기록 때 만들어져요.';
+    out.className = 'conn ok';
+  } catch (e) { out.textContent = '❌ ' + errMsg(e); out.className = 'conn bad'; }
+});
+
+$('#saveSettings').addEventListener('click', () => {
+  cfg = readForm();
+  saveLocal(CFG_KEY, cfg);
+  if (cfg.recorder) {
+    const goal = Math.max(1, parseInt($('#cfgGoal').value, 10) || 60);
+    const prize = $('#cfgPrize').value.trim() || '선물';
+    if (goal !== data.settings.goal) { data.settings.goal = goal; dirty['s|goal'] = goal; }
+    if (prize !== data.settings.prize) { data.settings.prize = prize; dirty['s|prize'] = prize; }
+  }
+  $('#settingsPanel').hidden = true;
+  load().then(ok => {
+    toast(ok ? '설정을 저장했어요. 연결됐어요 ✅' : '설정을 저장했지만 연결되지 않았어요. 아래 메시지를 확인하세요.');
+    if (ok) queueSave();
+  });
+});
+
+/* ===== 7. 축하 효과 ===== */
+function celebrate() {
+  toast(`🎉 목표 달성! ${data.settings.prize || '선물'} 받을 차례예요`);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const icons = ['⭐', '🎉', '👑', '🍚', '🎁'];
+  for (let i = 0; i < 36; i++) {
+    const s = document.createElement('span');
+    s.className = 'confetti';
+    s.textContent = icons[i % icons.length];
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.animationDelay = Math.random() * .8 + 's';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 4000);
+  }
+}
+
+/* ===== 8. 버튼 연결과 시작 ===== */
+$('#prevBtn').onclick = () => { view.setMonth(view.getMonth() - 1); render(); };
+$('#nextBtn').onclick = () => { view.setMonth(view.getMonth() + 1); render(); };
+$('#editBtn').onclick = () => openRecord(ymd(new Date()));
+$('#setBtn').onclick = openSettings;
+document.querySelectorAll('.backdrop').forEach(b => b.addEventListener('click', e => {
+  if (e.target === b || e.target.hasAttribute('data-close')) { b.hidden = true; selectedDate = null; }
+}));
+// 앱을 다시 열면 다른 기기에서 기록한 내용 새로 받기
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !Object.keys(dirty).length) load(); });
+
+render();   // 먼저 이 기기에 저장된 마지막 데이터로 바로 그림
+load();     // 그 다음 GitHub에서 최신 데이터를 받아 다시 그림
+</script>
+</body>
+</html>
