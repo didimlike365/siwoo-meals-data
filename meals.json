@@ -6,7 +6,7 @@
  "records": {
   "2026-09-24": {
    "lunch": true,
-   "breakfast": true
+   "breakfast": false
   }
  }
 }
