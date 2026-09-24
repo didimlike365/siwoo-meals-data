@@ -1,0 +1,12 @@
+{
+ "settings": {
+  "goal": 10,
+  "prize": "게임하기"
+ },
+ "records": {
+  "2026-09-24": {
+   "lunch": true,
+   "breakfast": true
+  }
+ }
+}
