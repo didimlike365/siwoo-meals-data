@@ -19,7 +19,8 @@
     "breakfast": "계란 🥚"
    },
    "breakfast": true,
-   "lunch": true
+   "lunch": true,
+   "dinner": true
   }
  }
 }
