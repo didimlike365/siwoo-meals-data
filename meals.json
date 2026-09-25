@@ -9,7 +9,8 @@
    "breakfast": true,
    "memo": {
     "breakfast": "계란",
-    "lunch": "불고기"
+    "lunch": "불고기",
+    "dinner": "🍕  피자"
    },
    "dinner": true
   }
