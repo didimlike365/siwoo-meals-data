@@ -17,7 +17,8 @@
   "2026-09-25": {
    "memo": {
     "breakfast": "계란 🥚"
-   }
+   },
+   "breakfast": true
   }
  }
 }
