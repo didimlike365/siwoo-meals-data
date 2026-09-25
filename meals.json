@@ -18,7 +18,8 @@
    "memo": {
     "breakfast": "계란 🥚"
    },
-   "breakfast": true
+   "breakfast": true,
+   "lunch": true
   }
  }
 }
